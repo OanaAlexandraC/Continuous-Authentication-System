@@ -316,8 +316,9 @@ class Window(object):
                 new_password, ok = dialog.getText(dialog, "New password", "Please enter the new password for " +
                                                   result, echo=QtWidgets.QLineEdit.Password)
                 if ok and new_password:
-                    # todo
-                    system_change_password(result, new_password)
+                    import re
+                    if re.match("^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{10,}$", new_password):
+                        system_change_password(result, new_password)
 
     # the function that triggers the action for the "Delete user" button
     def delete_user_button_action(self):

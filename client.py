@@ -35,6 +35,13 @@ class Window(QtCore.QObject):
         # main window - building, sizing, font, background
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(960, 720)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(MainWindow.sizePolicy().hasHeightForWidth())
+        MainWindow.setSizePolicy(sizePolicy)
+        MainWindow.setMinimumSize(QtCore.QSize(960, 720))
+        MainWindow.setMaximumSize(QtCore.QSize(960, 720))
         font = QtGui.QFont()
         font.setFamily("Bahnschrift SemiCondensed")
         font.setPointSize(12)
@@ -430,7 +437,6 @@ class Window(QtCore.QObject):
         message.setFont(font)
         message.setWindowTitle("Sorry, something went wrong")
 
-        # todo - uppercase letters restriction
         if len(self.new_username_input.text()) < 5:
             if len(self.new_username_input.text()) == 0:
                 message.setText("The username field can't be empty!")
@@ -444,7 +450,9 @@ class Window(QtCore.QObject):
             if len(self.new_password_input.text()) == 0:
                 message.setText("The password field can't be empty!")
             else:
-                message.setText("The password you picked is too short and/or easy to guess!")
+                if re.match("^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{10,}$",
+                            self.new_password_input.text()) is None:
+                    message.setText("The password you picked is too short and/or easy to guess!")
             message.exec_()
         else:
             response = trigger_creating_account(self.new_username_input.text(), self.new_password_input.text())
@@ -592,7 +600,9 @@ class Window(QtCore.QObject):
             if len(self.future_password_input.text()) == 0:
                 message.setText("The new password field can't be empty!")
             else:
-                message.setText("The new password that you picked is too short and/or easy to guess!")
+                if re.match("^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{10,}$",
+                            self.future_password_input.text()) is None:
+                    message.setText("The new password that you picked is too short and/or easy to guess!")
             message.exec_()
         elif len(self.confirm_password_input.text()) == 0:
             message.setText("Please confirm the new password by typing it again in the last field!")
