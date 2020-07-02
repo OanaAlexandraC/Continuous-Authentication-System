@@ -404,13 +404,13 @@ def accept_connections():
 # teaching the server how to react when it connects to a client
 def client(connection):
     with connection:
-        print('Connected to client')
+        # print('Connected to client')
         try:
             while True:
                 data = connection.recv(4096)
                 if data:
                     data = eval(data.decode('utf-8'))
-                    print(data)
+                    # print(data)
                     if data[0] == "create_account":
                         # print("I have to create an account")
                         taken_username = check_if_user_exists(data[1])
@@ -448,7 +448,7 @@ def client(connection):
                             else:
                                 connection.send(b'success')
                     elif data[0] == "verify_behavioural_data":
-                        print("I have to verify behavioural data")
+                        # print("I have to verify behavioural data")
                         result = verify_behavioural_data(data[1], data[2], data[5])
                         if result == True:
                             connection.send(b'valid')
@@ -461,7 +461,7 @@ def client(connection):
         except ConnectionResetError:
             pass
         finally:
-            print("Closed connection")
+            # print("Closed connection")
             connection.shutdown(socket.SHUT_RDWR)
             connection.close()
 

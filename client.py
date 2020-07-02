@@ -7,9 +7,7 @@ import dataExtractor
 import os
 import re
 from PyQt5 import QtCore, QtGui, QtWidgets
-import multiprocessing
 from multiprocessing import Process, Manager
-from _thread import start_new_thread
 
 # information about server, client & ssl certificates
 host_addr = '127.0.0.1'
@@ -30,6 +28,7 @@ class Window(QtCore.QObject):
 
     # noinspection PyArgumentList
     def __init__(self, MainWindow, restart_flag):
+        from functools import partial
         super(Window, self).__init__()
         erase_residual_data()
 
@@ -137,7 +136,6 @@ class Window(QtCore.QObject):
         self.log_out_button = QtWidgets.QPushButton(self.welcome_page_widget)
         self.log_out_button.setGeometry(QtCore.QRect(370, 480, 201, 31))
         self.log_out_button.setObjectName("log_out_button")
-        from functools import partial
         self.log_out_button.clicked.connect(partial(self.log_out, restart_flag))
 
         ####################################
@@ -288,7 +286,7 @@ class Window(QtCore.QObject):
         self.save_password_button = QtWidgets.QPushButton(self.change_password_widget)
         self.save_password_button.setGeometry(QtCore.QRect(630, 510, 201, 41))
         self.save_password_button.setObjectName("save_password_button")
-        self.save_password_button.clicked.connect(self.change_password)
+        self.save_password_button.clicked.connect(partial(self.change_password, restart_flag))
 
         # return button
         self.return_button = QtWidgets.QPushButton(self.change_password_widget)
@@ -577,7 +575,7 @@ class Window(QtCore.QObject):
                 self.finished_thread_offline_server.emit()
                 return "offline"
 
-    def change_password(self):
+    def change_password(self, restart_flag):
         message = QtWidgets.QMessageBox()
         message.setIcon(QtWidgets.QMessageBox.Critical)
         font = QtGui.QFont()
@@ -624,11 +622,12 @@ class Window(QtCore.QObject):
                     self.future_password_input.clear()
                     self.confirm_password_input.clear()
                 else:
-                    self.current_username_input.clear()
+                    """self.current_username_input.clear()
                     self.current_password_input.clear()
                     self.future_password_input.clear()
                     self.confirm_password_input.clear()
-                    self.switch_to_login_page()
+                    self.switch_to_login_page()"""
+                    self.log_out(restart_flag)
 
     def show_offline_server_notification(self):
         failed_message = QtWidgets.QMessageBox()
@@ -655,14 +654,14 @@ def trigger_connection():
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as socket_tcp:
             socket_tcp.connect((host_addr, host_port))
-            print('Connected to server')
+            # print('Connected to server')
             socket_tcp.send(str(['just-checking']).encode())
             while 1:
                 data = socket_tcp.recv(4096)
-                print('Received data: {}'.format(data.decode('utf-8')))
+                # print('Received data: {}'.format(data.decode('utf-8')))
                 # data = socket_tcp.recv(4096)
                 break
-        print('Closed connection')
+        # print('Closed connection')
         return True
     except (ConnectionError, ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
         return False
