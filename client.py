@@ -682,9 +682,10 @@ def trigger_creating_account(username, password):
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as socket_tcp:
             socket_tcp.connect((host_addr, host_port))
+            session_id = socket_tcp.recv(4096).decode('utf-8')
             hostname = socket.gethostname()
             ip_address = socket.gethostbyname(hostname)
-            data = ["create_account", username, password, hostname, ip_address]
+            data = [session_id, "create_account", username, password, hostname, ip_address]
             data = str(data)
             socket_tcp.send(data.encode())
             data = socket_tcp.recv(4096).decode('utf-8')
@@ -698,7 +699,8 @@ def send_behavioural_data(username, password, data):
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as socket_tcp:
             socket_tcp.connect((host_addr, host_port))
-            data = ["insert_behavioural_data", username, password, data]
+            session_id = socket_tcp.recv(4096).decode('utf-8')
+            data = [session_id, "insert_behavioural_data", username, password, data]
             data = str(data)
             socket_tcp.send(data.encode())
             data = socket_tcp.recv(4096).decode('utf-8')
@@ -731,9 +733,10 @@ def trigger_logging_in(username, password):
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as socket_tcp:
             socket_tcp.connect((host_addr, host_port))
+            session_id = socket_tcp.recv(4096).decode('utf-8')
             hostname = socket.gethostname()
             ip_address = socket.gethostbyname(hostname)
-            data = ["verify_credentials", username, password, hostname, ip_address]
+            data = [session_id, "verify_credentials", username, password, hostname, ip_address]
             data = str(data)
             socket_tcp.send(data.encode())
             data = socket_tcp.recv(4096).decode('utf-8')
@@ -749,7 +752,8 @@ def ask_server_how_much_data(username):
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as socket_tcp:
             socket_tcp.connect((host_addr, host_port))
-            data = ["how_much_data", username]
+            session_id = socket_tcp.recv(4096).decode('utf-8')
+            data = [session_id, "how_much_data", username]
             data = str(data)
             socket_tcp.send(data.encode())
             data = socket_tcp.recv(4096).decode('utf-8')
@@ -762,9 +766,10 @@ def trigger_changing_password(username, old_password, new_password):
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as socket_tcp:
             socket_tcp.connect((host_addr, host_port))
+            session_id = socket_tcp.recv(4096).decode('utf-8')
             hostname = socket.gethostname()
             ip_address = socket.gethostbyname(hostname)
-            data = ["change_password", username, old_password, new_password, hostname, ip_address]
+            data = [session_id, "change_password", username, old_password, new_password, hostname, ip_address]
             data = str(data)
             socket_tcp.send(data.encode())
             data = socket_tcp.recv(4096).decode('utf-8')
@@ -778,9 +783,10 @@ def send_to_verify_behavioural_data(username, password, data):
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as socket_tcp:
             socket_tcp.connect((host_addr, host_port))
+            session_id = socket_tcp.recv(4096).decode('utf-8')
             hostname = socket.gethostname()
             ip_address = socket.gethostbyname(hostname)
-            data = ["verify_behavioural_data", username, password, hostname, ip_address, data]
+            data = [session_id, "verify_behavioural_data", username, password, hostname, ip_address, data]
             data = str(data)
             socket_tcp.send(data.encode())
             data = socket_tcp.recv(4096).decode('utf-8')

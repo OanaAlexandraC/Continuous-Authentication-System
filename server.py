@@ -13,6 +13,7 @@ from sklearn.svm import OneClassSVM
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
+import random
 
 # information about server, clients & ssl certificates
 listen_addr = '127.0.0.1'
@@ -251,7 +252,7 @@ class Window(object):
     def change_username_button_action(self):
         selected_user = self.users_list.currentItem()
         if selected_user:
-            result = selected_user.text()[3:]
+            result = selected_user.text().split(": ", 1)[1]
         else:
             result = ''
         if len(result) == 0:
@@ -286,7 +287,7 @@ class Window(object):
     def change_password_button_action(self):
         selected_user = self.users_list.currentItem()
         if selected_user:
-            result = selected_user.text()[3:]
+            result = selected_user.text().split(": ", 1)[1]
         else:
             result = ''
         if len(result) == 0:
@@ -324,7 +325,7 @@ class Window(object):
     def delete_user_button_action(self):
         selected_user = self.users_list.currentItem()
         if selected_user:
-            result = selected_user.text()[3:]
+            result = selected_user.text().split(": ", 1)[1]
         else:
             result = ''
         if len(result) == 0:
@@ -406,55 +407,58 @@ def accept_connections():
 def client(connection):
     with connection:
         # print('Connected to client')
+        session_id = str(random.randint(1000000, 9999999))  # generating pseudo-random session token
         try:
             while True:
+                connection.send(session_id.encode("utf-8"))
                 data = connection.recv(4096)
                 if data:
                     data = eval(data.decode('utf-8'))
-                    # print(data)
-                    if data[0] == "create_account":
+                    if data[0] != session_id:
+                        break
+                    if data[1] == "create_account":
                         # print("I have to create an account")
-                        taken_username = check_if_user_exists(data[1])
+                        taken_username = check_if_user_exists(data[2])
                         if taken_username == True:
                             connection.send(b'username_taken')
                         else:
-                            create_new_account(data[1], data[2], data[3], data[4])
-                            create_biometrics_table(data[1])
+                            create_new_account(data[2], data[3], data[4], data[5])
+                            create_biometrics_table(data[2])
                             connection.send(b'success')
                         break
-                    elif data[0] == "insert_behavioural_data":
+                    elif data[1] == "insert_behavioural_data":
                         # print("I have to insert some behavioural data")
-                        insert_behavioural_data(data[1], data[2], data[3][0], data[3][1], data[3][2], data[3][3],
-                                                data[3][4], data[3][5], data[3][6], data[3][7], data[3][8], data[3][9],
-                                                data[3][10], data[3][11], data[3][12], data[3][13], data[3][14])
+                        insert_behavioural_data(data[2], data[3], data[4][0], data[4][1], data[4][2], data[4][3],
+                                                data[4][4], data[4][5], data[4][6], data[4][7], data[4][8], data[4][9],
+                                                data[4][10], data[4][11], data[4][12], data[4][13], data[4][14])
                         connection.send(b'success')
-                    elif data[0] == "verify_credentials":
+                    elif data[1] == "verify_credentials":
                         # print("I have to verify some credentials")
-                        if verify_credentials(data[1], data[2], data[3], data[4], False):
+                        if verify_credentials(data[2], data[3], data[4], data[5], False):
                             connection.send(b'valid')
                         else:
                             connection.send(b'invalid')
-                    elif data[0] == "how_much_data":
+                    elif data[1] == "how_much_data":
                         # print("I have to tell a client how much data I own about a user")
-                        how_much_data = str(count_biometrics(data[1]))
+                        how_much_data = str(count_biometrics(data[2]))
                         connection.send(how_much_data.encode("utf-8"))
-                    elif data[0] == "change_password":
+                    elif data[1] == "change_password":
                         # print("I have to change a password")
-                        if not verify_credentials(data[1], data[2], data[4], data[5], False):
+                        if not verify_credentials(data[2], data[3], data[5], data[6], False):
                             connection.send(b'invalid')
                         else:
-                            insert_log(data[1], "requested a change of password", data[4], data[5])
-                            if not change_password(data[1], data[2], data[3]):
+                            insert_log(data[2], "requested a change of password", data[5], data[6])
+                            if not change_password(data[2], data[3], data[4]):
                                 connection.send(b'unknown')
                             else:
                                 connection.send(b'success')
-                    elif data[0] == "verify_behavioural_data":
+                    elif data[1] == "verify_behavioural_data":
                         # print("I have to verify behavioural data")
-                        result = verify_behavioural_data(data[1], data[2], data[5])
+                        result = verify_behavioural_data(data[2], data[3], data[6])
                         if result == True:
                             connection.send(b'valid')
                         elif result == False:
-                            insert_log(data[1], "failed behavioural authentication", data[3], data[4])
+                            insert_log(data[2], "failed behavioural authentication", data[4], data[5])
                             connection.send(b'invalid')
                         elif result == "wrong_password":
                             connection.send(b'ignore')
@@ -791,7 +795,7 @@ def delete_account(username):
     try:
         my_cursor.execute("DELETE FROM users_credentials WHERE username = %s", (username,))
         my_cursor.execute("DELETE FROM history_logs WHERE username = %s", (username,))
-        my_cursor.execute("DROP TABLE {table}".format(table=table_name))
+        my_cursor.execute("DROP TABLE IF EXISTS {table}".format(table=table_name))
     except mysql.connector.Error:
         insert_log("System", "failed deleting " + username + "'s account", "Authentication System Manager", "")
         my_cursor.close()
