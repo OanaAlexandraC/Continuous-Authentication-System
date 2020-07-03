@@ -442,6 +442,10 @@ def client(connection):
                         # print("I have to tell a client how much data I own about a user")
                         how_much_data = str(count_biometrics(data[2]))
                         connection.send(how_much_data.encode("utf-8"))
+                    elif data[1] == "when_changed_password":
+                        # print("I have to tell a client how much data I own about a user")
+                        how_much_data = str(count_days_since_last_password_change(data[2]))
+                        connection.send(how_much_data.encode("utf-8"))
                     elif data[1] == "change_password":
                         # print("I have to change a password")
                         if not verify_credentials(data[2], data[3], data[5], data[6], False):
@@ -575,7 +579,7 @@ def create_new_account(username, password, hostname, ip_address):
     my_cursor = database.cursor()
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     try:
-        my_cursor.execute("INSERT INTO users_credentials VALUES (%s, %s, CURRENT_TIMESTAMP)", (username, hashed_password))
+        my_cursor.execute("INSERT INTO users_credentials VALUES (%s, %s, CURRENT_DATE)", (username, hashed_password))
     except mysql.connector.IntegrityError:
         my_cursor.close()
         database.close()
@@ -664,6 +668,19 @@ def count_biometrics(username):
     return data
 
 
+# function that counts how many days have passed since a specific user changed password
+def count_days_since_last_password_change(username):
+    database = connect()
+    my_cursor = database.cursor()
+    my_cursor.execute("SELECT datediff(CURRENT_DATE, last_change) FROM users_credentials WHERE username = %s",
+                      (username,))
+    data = my_cursor.fetchall()
+    data = data[0][0]
+    my_cursor.close()
+    database.close()
+    return data
+
+
 # function that changes a user's password (from the client side)
 def change_password(username, old_password, new_password):
     database = connect()
@@ -717,6 +734,14 @@ def change_password(username, old_password, new_password):
     hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
     try:
         my_cursor.execute("UPDATE users_credentials SET password = %s WHERE username = %s", (hashed_password, username))
+    except mysql.connector.Error:
+        my_cursor.close()
+        database.rollback()
+        database.close()
+        insert_log("System", "failed changing " + username + "'s password", "Authentication System Manager", "")
+        return False
+    try:
+        my_cursor.execute("UPDATE users_credentials SET last_change = CURRENT_DATE WHERE username = %s", (username,))
     except mysql.connector.Error:
         my_cursor.close()
         database.rollback()

@@ -25,6 +25,7 @@ context.load_cert_chain(certfile=client_cert, keyfile=client_key)
 class Window(QtCore.QObject):
     finished_thread = QtCore.pyqtSignal()
     finished_thread_offline_server = QtCore.pyqtSignal()
+    forced_password_change = QtCore.pyqtSignal()
 
     # noinspection PyArgumentList
     def __init__(self, MainWindow, restart_flag):
@@ -321,6 +322,7 @@ class Window(QtCore.QObject):
         threading.Thread(target=trigger_connection, daemon=True).start()
         self.finished_thread.connect(self.show_popup, QtCore.Qt.QueuedConnection)
         self.finished_thread_offline_server.connect(self.show_offline_server_notification, QtCore.Qt.QueuedConnection)
+        self.forced_password_change.connect(self.show_forced_password_change_popup, QtCore.Qt.QueuedConnection)
 
     # noinspection PyArgumentList
     def retranslateUi(self, MainWindow):
@@ -367,7 +369,7 @@ class Window(QtCore.QObject):
                                                + "you. This message will go away after we feel like we know you "
                                                + "better and you\'ll be able to log in."))
         self.new_password_credentials.setTitle(
-            _translate("MainWindow", "Are you sure you want to change your password? Please fill in the form"))
+            _translate("MainWindow", "Please fill in the form to change your password"))
         self.current_username_label.setText(_translate("MainWindow", "Username"))
         self.current_password_label.setText(_translate("MainWindow", "Old Password"))
         self.future_password_label.setText(_translate("MainWindow", "New Password"))
@@ -427,6 +429,16 @@ class Window(QtCore.QObject):
         self.new_account_page_widget.setVisible(False)
         self.welcome_page_widget.setVisible(False)
         self.change_password_widget.setVisible(True)
+        self.return_button.setVisible(True)
+
+    def switch_to_forced_change_password_page(self):
+        erase_residual_data()
+        self.login_page_widget.setVisible(False)
+        self.initial_biometric_data_page_widget.setVisible(False)
+        self.new_account_page_widget.setVisible(False)
+        self.welcome_page_widget.setVisible(False)
+        self.change_password_widget.setVisible(True)
+        self.return_button.setVisible(False)
 
     # function that creates a new account
     def create_new_account(self):
@@ -524,7 +536,13 @@ class Window(QtCore.QObject):
     def log_in_second(self, username, password):
         result = self.monitor_behaviour(username, password, 1)
         if result is True:
-            self.switch_to_welcome_page()
+            how_many_days = ask_server_about_last_password_change(username)
+            if how_many_days > 90:
+                self.switch_to_forced_change_password_page()
+                self.forced_password_change.emit()
+                return
+            else:
+                self.switch_to_welcome_page()
             # start_new_thread(self.monitor_behaviour, (username, password, 0))
             threading.Thread(target=self.monitor_behaviour, args=(username, password, 0), daemon=True).start()
         else:
@@ -544,6 +562,16 @@ class Window(QtCore.QObject):
         failed_message.setText("We detected unusual behaviour that couldn't be used to verify your identity. "
                                "If this was a mistake, please log in again.")
         failed_message.exec_()
+
+    def show_forced_password_change_popup(self):
+        message = QtWidgets.QMessageBox()
+        message.setIcon(QtWidgets.QMessageBox.Information)
+        font = QtGui.QFont()
+        font.setFamily("Bahnschrift SemiCondensed")
+        message.setFont(font)
+        message.setWindowTitle("Please, change your password!")
+        message.setText("Your password seems to be older than 90 days! Changing it is mandatory!")
+        message.exec_()
 
     def monitor_behaviour(self, username, password, flag):
         if flag == 0:
@@ -754,6 +782,21 @@ def ask_server_how_much_data(username):
             socket_tcp.connect((host_addr, host_port))
             session_id = socket_tcp.recv(4096).decode('utf-8')
             data = [session_id, "how_much_data", username]
+            data = str(data)
+            socket_tcp.send(data.encode())
+            data = socket_tcp.recv(4096).decode('utf-8')
+            return int(data)
+    except (ConnectionError, ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
+        return False
+
+
+# function to ask the server when was the password changed last time
+def ask_server_about_last_password_change(username):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as socket_tcp:
+            socket_tcp.connect((host_addr, host_port))
+            session_id = socket_tcp.recv(4096).decode('utf-8')
+            data = [session_id, "when_changed_password", username]
             data = str(data)
             socket_tcp.send(data.encode())
             data = socket_tcp.recv(4096).decode('utf-8')
