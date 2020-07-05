@@ -26,6 +26,7 @@ class Window(QtCore.QObject):
     finished_thread = QtCore.pyqtSignal()
     finished_thread_offline_server = QtCore.pyqtSignal()
     forced_password_change = QtCore.pyqtSignal()
+    username = ""
 
     # noinspection PyArgumentList
     def __init__(self, MainWindow, restart_flag):
@@ -500,6 +501,7 @@ class Window(QtCore.QObject):
         else:
             response = trigger_logging_in(username, password)
             if response:
+                self.username = username
                 how_much_data = ask_server_how_much_data(username)
                 if how_much_data < 20:
                     # if I don't have enough data, I let the user in only using his password
@@ -683,6 +685,7 @@ class Window(QtCore.QObject):
         """global RESTART
         RESTART = True
         print(RESTART)"""
+        send_log_out_information(self.username)
         restart_flag.value = 1
         QtWidgets.QApplication.quit()
 
@@ -729,6 +732,23 @@ def send_behavioural_data(username, password, data):
             socket_tcp.connect((host_addr, host_port))
             session_id = socket_tcp.recv(4096).decode('utf-8')
             data = [session_id, "insert_behavioural_data", username, password, data]
+            data = str(data)
+            socket_tcp.send(data.encode())
+            data = socket_tcp.recv(4096).decode('utf-8')
+            return data
+    except (ConnectionError, ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
+        return False
+
+
+# function that sends information about a user logging out to the server
+def send_log_out_information(username):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as socket_tcp:
+            socket_tcp.connect((host_addr, host_port))
+            session_id = socket_tcp.recv(4096).decode('utf-8')
+            hostname = socket.gethostname()
+            ip_address = socket.gethostbyname(hostname)
+            data = [session_id, "insert_log_out_information", username, hostname, ip_address]
             data = str(data)
             socket_tcp.send(data.encode())
             data = socket_tcp.recv(4096).decode('utf-8')
@@ -869,7 +889,7 @@ if __name__ == '__main__':
         p = Process(target=start)
         print("started")
         p.start()
-        p.join()
+        p.join()s
         print("ended")
         print(RESTART)"""
     while RESTART.value == 1:

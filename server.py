@@ -432,6 +432,8 @@ def client(connection):
                                                 data[4][4], data[4][5], data[4][6], data[4][7], data[4][8], data[4][9],
                                                 data[4][10], data[4][11], data[4][12], data[4][13], data[4][14])
                         connection.send(b'success')
+                    elif data[1] == "insert_log_out_information":
+                        insert_log(data[2], "logged out", data[3], data[4])
                     elif data[1] == "verify_credentials":
                         # print("I have to verify some credentials")
                         if verify_credentials(data[2], data[3], data[4], data[5], False):
@@ -527,7 +529,8 @@ def get_history_logs():
     database = connect()
     my_cursor = database.cursor()
     my_cursor.execute(
-        "SELECT username, action, timestamp, hostname, ip_address FROM history_logs ORDER BY timestamp DESC")
+        "SELECT username, action, timestamp, hostname, ip_address FROM history_logs ORDER BY timestamp DESC, "
+        "ip_address ASC")
     data = my_cursor.fetchall()
     my_cursor.close()
     database.close()
